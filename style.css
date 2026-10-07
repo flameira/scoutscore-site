@@ -63,3 +63,24 @@ ul { padding-left: 20px; }
 /* O logótipo é azul-marinho: fundo branco para se ver também no tema escuro */
 .brand img { background: #fff; border-radius: 8px; padding: 2px; }
 .hero img { background: #fff; border-radius: 24px; padding: 16px; }
+
+/* Galeria de ecrãs: desliza na horizontal, com encaixe */
+.section-title { text-align: center; margin: 40px 0 12px; font-size: 22px; }
+.gallery {
+  display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory;
+  padding: 4px 4px 16px; -webkit-overflow-scrolling: touch;
+}
+.gallery figure { flex: 0 0 auto; width: 200px; margin: 0; scroll-snap-align: center; }
+.gallery img {
+  width: 100%; height: auto; display: block; border-radius: 18px;
+  border: 1px solid var(--line); box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
+}
+.gallery figcaption { font-size: 13px; color: var(--muted); text-align: center; margin-top: 8px; line-height: 1.35; }
+.gallery figcaption b { display: block; color: var(--text); font-size: 14px; }
+main:has(.gallery) { max-width: 980px; }
+
+/* Ecrãs largos: galeria em grelha (no telemóvel continua a deslizar) */
+@media (min-width: 900px) {
+  .gallery { flex-wrap: wrap; justify-content: center; overflow: visible; row-gap: 28px; }
+}
+.hero img { max-width: 180px; }
