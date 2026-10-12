@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ScoutScore</title>
+  <meta name="description" content="Avaliação de um jogador em direto, feita com o ScoutScore.">
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="no-referrer">
+  <link rel="icon" href="logo.png">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Link interativo do jogo: os dados vêm todos no «#» do link (nunca chegam ao servidor). */
+    main { max-width: 640px; }
+    .panel { background: var(--card); border-radius: 16px; padding: 16px; margin-top: 12px; }
+    .panel h2 { margin: 0 0 10px; font-size: 16px; }
+    .head { display: flex; gap: 14px; align-items: center; }
+    .head .who { flex: 1; min-width: 0; }
+    .head h1 { font-size: 22px; margin: 0; overflow-wrap: anywhere; }
+    .score { font-weight: 600; margin-top: 2px; }
+    .sub { color: var(--muted); font-size: 14px; line-height: 1.45; }
+    .badge { flex: 0 0 auto; min-width: 74px; padding: 10px 8px; border-radius: 14px; color: #fff; text-align: center; }
+    .badge b { display: block; font-size: 30px; line-height: 1.1; }
+    .badge span { font-size: 12px; opacity: .95; }
+    .phase { display: inline-block; margin-top: 8px; padding: 2px 10px; border-radius: 999px; font-size: 13px; font-weight: 600;
+             background: var(--accent); color: #fff; }
+    .phase.done { background: var(--muted); }
+    .note { font-size: 13px; color: var(--muted); margin: 10px 2px 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 15px; }
+    td { padding: 6px 0; border-top: 1px solid var(--line); }
+    tr:first-child td { border-top: 0; }
+    td:last-child { text-align: right; font-weight: 600; }
+    .bar { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; margin: 8px 0; font-size: 14px; }
+    .bar .track { grid-column: 1 / -1; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; display: flex; }
+    .bar .pos { background: #1FAF3A; } .bar .neg { background: #E0301E; }
+    .pts { font-weight: 700; font-variant-numeric: tabular-nums; }
+    .plus { color: #1FAF3A; } .minus { color: #E0301E; }
+    svg { display: block; width: 100%; height: auto; }
+    .events { list-style: none; margin: 0; padding: 0; }
+    .events li { display: grid; grid-template-columns: 58px 1fr auto; gap: 8px; padding: 7px 0; border-top: 1px solid var(--line); font-size: 15px; }
+    .events li:first-child { border-top: 0; }
+    .events .min { color: var(--muted); font-variant-numeric: tabular-nums; }
+    .stars { color: #D4A900; letter-spacing: 2px; font-size: 18px; }
+    .attr { display: grid; grid-template-columns: 110px 1fr 34px; gap: 10px; align-items: center; font-size: 14px; margin: 6px 0; }
+    .attr .track { height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+    .attr .fill { height: 100%; background: var(--accent); }
+    .text { white-space: pre-wrap; margin: 4px 0 10px; }
+    .cta { text-align: center; margin-top: 24px; }
+    .cta a.btn { display: inline-block; margin-top: 8px; padding: 12px 22px; border-radius: 12px; background: #0B1E2D; color: #fff;
+                 text-decoration: none; font-weight: 600; }
+    .error { text-align: center; padding: 48px 16px; color: var(--muted); }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="./"><img src="logo.png" alt="" width="34" height="38"><span>SCOUT<b>SCORE</b></span></a>
+  </header>
+
+  <main id="app"></main>
+
+  <footer class="foot">© 2026 ScoutScore</footer>
+
+  <script>
+  (function () {
+    "use strict";
+
+    // Textos da página (os nomes das ações, estatísticas e veredito já vêm traduzidos no link)
+    var I18N = {
+      pt: { evolution: "Evolução da nota", stats: "Estatísticas", breakdown: "Repartição da pontuação", map: "Mapa de ações",
+            mapNote: "Ataque para a direita ➡", timeline: "Cronologia", scout: "Avaliação do olheiro", potential: "Potencial",
+            strengths: "Pontos fortes", weaknesses: "A melhorar", minutes: "{0}' jogados de {1}'", positions: "Posições: {0}",
+            live: "Fotografia de {0}. Para ver a evolução, pede ao olheiro um link novo.", done: "Gerado em {0}.",
+            phases: ["Por começar", "1ª parte", "Intervalo", "2ª parte", "Terminado"], subIn: "🟢 Entrou", subOut: "🔴 Saiu",
+            empty: "Ainda sem ações registadas.", invalid: "Este link está incompleto ou é inválido.",
+            old: "Este browser não consegue abrir o link. Atualiza-o ou experimenta outro.",
+            cta: "Avalia jogadores em direto, ação a ação.", ctaBtn: "Descarregar o ScoutScore" },
+      en: { evolution: "Rating evolution", stats: "Statistics", breakdown: "Rating breakdown", map: "Action map",
+            mapNote: "Attacking to the right ➡", timeline: "Timeline", scout: "Scout evaluation", potential: "Potential",
+            strengths: "Strengths", weaknesses: "To improve", minutes: "{0}' played of {1}'", positions: "Positions: {0}",
+            live: "Snapshot from {0}. To follow the evolution, ask the scout for a new link.", done: "Generated on {0}.",
+            phases: ["Not started", "1st half", "Half-time", "2nd half", "Finished"], subIn: "🟢 Came on", subOut: "🔴 Went off",
+            empty: "No actions recorded yet.", invalid: "This link is incomplete or invalid.",
+            old: "This browser can't open the link. Please update it or try another one.",
+            cta: "Rate players live, action by action.", ctaBtn: "Get ScoutScore" },
+      es: { evolution: "Evolución de la nota", stats: "Estadísticas", breakdown: "Desglose de la nota", map: "Mapa de acciones",
+            mapNote: "Ataque hacia la derecha ➡", timeline: "Cronología", scout: "Evaluación del ojeador", potential: "Potencial",
+            strengths: "Puntos fuertes", weaknesses: "A mejorar", minutes: "{0}' jugados de {1}'", positions: "Posiciones: {0}",
+            live: "Instantánea de {0}. Para ver la evolución, pide al ojeador un enlace nuevo.", done: "Generado el {0}.",
+            phases: ["Sin empezar", "1ª parte", "Descanso", "2ª parte", "Finalizado"], subIn: "🟢 Entró", subOut: "🔴 Salió",
+            empty: "Todavía no hay acciones registradas.", invalid: "Este enlace está incompleto o no es válido.",
+            old: "Este navegador no puede abrir el enlace. Actualízalo o prueba otro.",
+            cta: "Evalúa jugadores en directo, acción a acción.", ctaBtn: "Descargar ScoutScore" },
+      fr: { evolution: "Évolution de la note", stats: "Statistiques", breakdown: "Répartition de la note", map: "Carte des actions",
+            mapNote: "Attaque vers la droite ➡", timeline: "Chronologie", scout: "Évaluation du recruteur", potential: "Potentiel",
+            strengths: "Points forts", weaknesses: "À améliorer", minutes: "{0}' joués sur {1}'", positions: "Postes : {0}",
+            live: "Instantané de {0}. Pour suivre l'évolution, demande un nouveau lien au recruteur.", done: "Généré le {0}.",
+            phases: ["Pas commencé", "1re mi-temps", "Mi-temps", "2e mi-temps", "Terminé"], subIn: "🟢 Entré", subOut: "🔴 Sorti",
+            empty: "Aucune action enregistrée pour l'instant.", invalid: "Ce lien est incomplet ou invalide.",
+            old: "Ce navigateur ne peut pas ouvrir le lien. Mets-le à jour ou essaie-en un autre.",
+            cta: "Évalue les joueurs en direct, action par action.", ctaBtn: "Télécharger ScoutScore" },
+      it: { evolution: "Andamento del voto", stats: "Statistiche", breakdown: "Ripartizione del voto", map: "Mappa delle azioni",
+            mapNote: "Attacco verso destra ➡", timeline: "Cronologia", scout: "Valutazione dell'osservatore", potential: "Potenziale",
+            strengths: "Punti di forza", weaknesses: "Da migliorare", minutes: "{0}' giocati su {1}'", positions: "Posizioni: {0}",
+            live: "Istantanea delle {0}. Per seguire l'andamento, chiedi all'osservatore un nuovo link.", done: "Generato il {0}.",
+            phases: ["Non iniziata", "1° tempo", "Intervallo", "2° tempo", "Terminata"], subIn: "🟢 Entrato", subOut: "🔴 Uscito",
+            empty: "Ancora nessuna azione registrata.", invalid: "Questo link è incompleto o non valido.",
+            old: "Questo browser non riesce ad aprire il link. Aggiornalo o provane un altro.",
+            cta: "Valuta i giocatori dal vivo, azione per azione.", ctaBtn: "Scarica ScoutScore" }
+    };
+
+    var app = document.getElementById("app");
+    var T = I18N[(navigator.language || "en").slice(0, 2)] || I18N.en;
+
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+    function fmt(s) { var a = arguments; return s.replace(/\{(\d)\}/g, function (_, i) { return a[+i + 1]; }); }
+    function fixed(n, d) { return Number(n).toFixed(d); }
+    function color(r) {
+      return r >= 9 ? "#3D5AFE" : r >= 8 ? "#00A3B4" : r >= 7 ? "#1FAF3A" : r >= 6.5 ? "#D4A900" : r >= 6 ? "#EE7D0E" : "#E0301E";
+    }
+    function points(p) { return (p > 0 ? "+" : p < 0 ? "−" : "") + fixed(Math.abs(p), 2); }
+    function fail(msg) { app.innerHTML = '<p class="error">' + esc(msg) + "</p>"; }
+
+    // base64url → deflate (raw) → JSON (MatchLink.cs na app)
+    async function decode(hash) {
+      var b64 = hash.replace(/-/g, "+").replace(/_/g, "/");
+      var bin = atob(b64);
+      var bytes = new Uint8Array(bin.length);
+      for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      var stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+      return JSON.parse(await new Response(stream).text());
+    }
+
+    function render(d) {
+      T = I18N[d.l] || T;
+      document.documentElement.lang = I18N[d.l] ? d.l : "en";
+      document.title = d.p + " – ScoutScore";
+
+      var defs = d.a || [], events = d.e || [];
+      var actions = events.filter(function (e) { return e[2] >= 0; });
+      function minute(e) { return fmt(d.mh[e[0] - 1] || "{0}'", Math.floor(e[1] / 60) + 1); }
+
+      var html = "";
+
+      // Cabeçalho: jogador, jogo, fase e nota
+      var meta = [d.c, new Date(d.d + "T12:00:00").toLocaleDateString(d.l)].filter(Boolean).join(" · ");
+      var phase = T.phases[d.ph] || "";
+      if (d.ph === 1 || d.ph === 3) phase += " · " + (Math.floor(d.cl / 60) + 1) + "'";
+      html += '<div class="panel"><div class="head"><div class="who">' +
+        "<h1>" + esc(d.p) + (d.n != null ? " <span class=\"sub\">#" + esc(d.n) + "</span>" : "") + "</h1>" +
+        '<div class="score">' + esc(d.t) + " " + d.g[0] + " – " + d.g[1] + " " + esc(d.o) + "</div>" +
+        '<div class="sub">' + esc(meta) + "</div>" +
+        '<div class="sub">' + esc(fmt(T.positions, d.ps)) + " · " + esc(fmt(T.minutes, d.mp[0], d.mp[1])) + "</div>" +
+        '<span class="phase' + (d.ph === 4 ? " done" : "") + '">' + esc(phase) + "</span>" +
+        '</div><div class="badge" style="background:' + color(d.r) + '"><b>' + fixed(d.r, 1) + "</b><span>" + esc(d.vd) + "</span></div></div></div>";
+      var when = new Date(d.u * 1000).toLocaleString(d.l, { dateStyle: "short", timeStyle: "short" });
+      html += '<p class="note">' + esc(fmt(d.ph === 4 ? T.done : T.live, when)) + "</p>";
+
+      // Evolução da nota
+      if (actions.length > 0) {
+        var vals = [6.5], sum = 6.5;
+        actions.forEach(function (e) { sum += e[3] / 100; vals.push(Math.min(10, Math.max(0, sum))); });
+        var lo = Math.min(5, Math.floor(Math.min.apply(null, vals))), hi = Math.max(8, Math.ceil(Math.max.apply(null, vals)));
+        var W = 300, H = 110;
+        var X = function (i) { return 6 + i * (W - 12) / Math.max(1, vals.length - 1); };
+        var Y = function (v) { return 6 + (hi - v) * (H - 12) / (hi - lo); };
+        var line = vals.map(function (v, i) { return X(i).toFixed(1) + "," + Y(v).toFixed(1); }).join(" ");
+        var last = vals[vals.length - 1];
+        html += '<div class="panel"><h2>' + esc(T.evolution) + '</h2><svg viewBox="0 0 ' + W + " " + H + '" role="img">' +
+          '<line x1="0" x2="' + W + '" y1="' + Y(6.5) + '" y2="' + Y(6.5) + '" stroke="currentColor" stroke-opacity=".25" stroke-dasharray="4 4"/>' +
+          '<polyline points="' + line + '" fill="none" stroke="' + color(last) + '" stroke-width="2.5" stroke-linejoin="round"/>' +
+          '<circle cx="' + X(vals.length - 1) + '" cy="' + Y(last) + '" r="4" fill="' + color(last) + '"/></svg></div>';
+      }
+
+      // Estatísticas (já traduzidas pela app)
+      if (d.st && d.st.length) {
+        html += '<div class="panel"><h2>' + esc(T.stats) + "</h2><table>" +
+          d.st.map(function (s) { return "<tr><td>" + esc(s[0]) + "</td><td>" + esc(s[1]) + "</td></tr>"; }).join("") + "</table></div>";
+      }
+
+      // Repartição por categoria
+      var cats = {};
+      actions.forEach(function (e) {
+        var c = defs[e[2]][2], x = cats[c] || (cats[c] = { pos: 0, neg: 0, pts: 0 });
+        if (e[3] > 0) x.pos++; else if (e[3] < 0) x.neg++;
+        x.pts += e[3] / 100;
+      });
+      var catKeys = Object.keys(d.cn || {}).filter(function (c) { return cats[c]; });
+      if (catKeys.length) {
+        html += '<div class="panel"><h2>' + esc(T.breakdown) + "</h2>" + catKeys.map(function (c) {
+          var x = cats[c], total = Math.max(1, x.pos + x.neg);
+          return '<div class="bar"><span>' + esc(d.cn[c]) + " <span class=\"sub\">" + x.pos + "+ / " + x.neg + "−</span></span>" +
+            '<span class="pts ' + (x.pts >= 0 ? "plus" : "minus") + '">' + points(x.pts) + "</span>" +
+            '<div class="track"><div class="pos" style="width:' + (100 * x.pos / total) + '%"></div>' +
+            '<div class="neg" style="width:' + (100 * x.neg / total) + '%"></div></div></div>';
+        }).join("") + "</div>";
+      }
+
+      // Mapa de ações: campo na horizontal (105×68), mancha de calor + pontos verdes/vermelhos
+      var located = actions.filter(function (e) { return e.length >= 6; });
+      if (located.length) {
+        var dots = located.map(function (e) {
+          return '<circle cx="' + (e[4] * 1.05).toFixed(1) + '" cy="' + (e[5] * 0.68).toFixed(1) + '" r="1.6" fill="' +
+            (e[3] >= 0 ? "#2ECC71" : "#E74C3C") + '" stroke="#000" stroke-opacity=".6" stroke-width=".25"/>';
+        }).join("");
+        var heat = located.map(function (e) {
+          return '<circle cx="' + (e[4] * 1.05).toFixed(1) + '" cy="' + (e[5] * 0.68).toFixed(1) + '" r="10" fill="url(#heat)"/>';
+        }).join("");
+        html += '<div class="panel"><h2>' + esc(T.map) + '</h2><svg viewBox="-3 -3 111 74" role="img">' +
+          '<defs><radialGradient id="heat"><stop offset="0" stop-color="#FFE600" stop-opacity=".45"/>' +
+          '<stop offset="1" stop-color="#FFE600" stop-opacity="0"/></radialGradient>' +
+          '<clipPath id="field"><rect x="0" y="0" width="105" height="68"/></clipPath></defs>' +
+          '<rect x="-3" y="-3" width="111" height="74" rx="3" fill="#2E8B3E"/>' +
+          '<g fill="none" stroke="#fff" stroke-opacity=".75" stroke-width=".4">' +
+          '<rect x="0" y="0" width="105" height="68"/><line x1="52.5" y1="0" x2="52.5" y2="68"/><circle cx="52.5" cy="34" r="9.15"/>' +
+          '<rect x="0" y="13.84" width="16.5" height="40.32"/><rect x="88.5" y="13.84" width="16.5" height="40.32"/>' +
+          '<rect x="0" y="24.84" width="5.5" height="18.32"/><rect x="99.5" y="24.84" width="5.5" height="18.32"/></g>' +
+          '<g clip-path="url(#field)">' + heat + "</g>" + dots + "</svg>" +
+          '<p class="note">' + esc(T.mapNote) + "</p></div>";
+      }
+
+      // Cronologia (mais recente primeiro)
+      html += '<div class="panel"><h2>' + esc(T.timeline) + "</h2>";
+      if (events.length === 0) html += '<p class="sub">' + esc(T.empty) + "</p>";
+      else html += '<ul class="events">' + events.slice().reverse().map(function (e) {
+        var label = e[2] === -1 ? T.subIn : e[2] === -2 ? T.subOut : defs[e[2]][0] + " " + defs[e[2]][1];
+        var pts = e[2] >= 0 ? '<span class="pts ' + (e[3] >= 0 ? "plus" : "minus") + '">' + points(e[3] / 100) + "</span>" : "<span></span>";
+        return '<li><span class="min">' + esc(minute(e)) + "</span><span>" + esc(label) + "</span>" + pts + "</li>";
+      }).join("") + "</ul>";
+      html += "</div>";
+
+      // Avaliação final do olheiro
+      if (d.ev) {
+        var ev = d.ev;
+        html += '<div class="panel"><h2>' + esc(T.scout) + "</h2>";
+        if (ev.pt > 0) html += '<div>' + esc(T.potential) + ' <span class="stars">' + "★★★★★".slice(0, ev.pt) + "☆☆☆☆☆".slice(0, 5 - ev.pt) + "</span></div>";
+        if (ev.rc) html += '<span class="phase">' + esc(ev.rc) + "</span>";
+        html += (ev.at || []).filter(function (a) { return a[1] > 0; }).map(function (a) {
+          return '<div class="attr"><span>' + esc(a[0]) + '</span><div class="track"><div class="fill" style="width:' + (a[1] * 20) +
+            '%"></div></div><span class="pts">' + a[1] + "/5</span></div>";
+        }).join("");
+        if (ev.s) html += "<h2 style=\"margin-top:14px\">" + esc(T.strengths) + '</h2><p class="text">' + esc(ev.s) + "</p>";
+        if (ev.w) html += "<h2>" + esc(T.weaknesses) + '</h2><p class="text">' + esc(ev.w) + "</p>";
+        html += "</div>";
+      }
+
+      html += '<div class="cta"><p class="sub">' + esc(T.cta) + '</p><a class="btn" href="get?s=live">' + esc(T.ctaBtn) + "</a></div>";
+      app.innerHTML = html;
+    }
+
+    async function load() {
+      var hash = location.hash.slice(1);
+      if (!hash) return fail(T.invalid);
+      if (typeof DecompressionStream === "undefined") return fail(T.old);
+      try {
+        var d = await decode(hash);
+        if (d.v !== 1) return fail(T.invalid);
+        render(d);
+      } catch (e) {
+        fail(T.invalid);
+      }
+    }
+
+    // Um link novo aberto no mesmo separador só muda o «#»
+    window.addEventListener("hashchange", load);
+    load();
+  })();
+  </script>
+</body>
+</html>
