@@ -88,13 +88,16 @@ main:has(.gallery) { max-width: 980px; }
 /* Botões de download (Google Play / App Store) */
 .stores { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 24px; }
 .stores a {
-  display: inline-flex; flex-direction: column; align-items: flex-start; min-width: 160px;
-  padding: 8px 20px; border-radius: 12px; background: #0B1E2D; color: #fff;
+  display: inline-flex; align-items: center; gap: 10px; min-width: 170px;
+  padding: 8px 18px 8px 14px; border-radius: 12px; background: #0B1E2D; color: #fff;
   border: 1px solid rgba(255, 255, 255, .18); text-decoration: none; font-weight: 600; font-size: 18px; line-height: 1.2;
 }
+.stores a span { display: flex; flex-direction: column; align-items: flex-start; }
+.stores a .ico { width: 26px; height: 26px; flex: 0 0 auto; }
 .stores a small { font-weight: 400; font-size: 11px; opacity: .8; }
 .stores a:hover { background: var(--accent); }
 .stores a.hidden { display: none; }
+.stores a small { white-space: nowrap; }
 section.download { text-align: center; margin-top: 48px; scroll-margin-top: 70px; }
 .download h2 { font-size: 22px; margin: 0; }
 .download p { color: var(--muted); margin: 6px 0 0; }
