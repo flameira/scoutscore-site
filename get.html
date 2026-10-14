@@ -8,20 +8,16 @@
   <meta name="robots" content="noindex">
   <link rel="icon" href="logo.png">
   <link rel="stylesheet" href="style.css">
-  <style>
-    .stores { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 24px; }
-    .stores a { display: inline-block; padding: 12px 22px; border-radius: 12px; background: #0B1E2D; color: #fff;
-                text-decoration: none; font-weight: 600; }
-    .stores a.hidden { display: none; }
-  </style>
   <script>
     // QR code do cartão partilhado (get?s=card) e outros links: reencaminha para a loja certa.
     // A origem («s») vai no referrer do Play para aparecer nas aquisições da Play Console.
     (function () {
-      var APP_STORE_ID = ""; // Apple ID numérico da app (App Store Connect); vazio = mostra só os botões
+      var APP_STORE_ID = "6820147399"; // Apple ID numérico da app (App Store Connect); vazio = mostra só os botões
       var source = (new URLSearchParams(location.search).get("s") || "web").replace(/[^a-z0-9_-]/gi, "").slice(0, 30);
       var referrer = encodeURIComponent("utm_source=" + source + "&utm_medium=share&utm_campaign=scoutscore");
-      var play = "https://play.google.com/store/apps/details?id=com.flameira.scoutscore&referrer=" + referrer;
+      // Teste interno enquanto a Play não aprova a app; depois de aprovada, deixar vazio para usar a página pública.
+      var PLAY_INTERNAL_TEST = "https://play.google.com/apps/internaltest/4701028716561689987";
+      var play = PLAY_INTERNAL_TEST || "https://play.google.com/store/apps/details?id=com.flameira.scoutscore&referrer=" + referrer;
       var apple = APP_STORE_ID ? "https://apps.apple.com/app/id" + APP_STORE_ID : "";
       var ua = navigator.userAgent;
       var ios = /iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1);
@@ -47,8 +43,8 @@
       <p>Avalia jogadores de futebol em direto, ação a ação, com uma nota de 0 a 10, mapas de calor e relatórios.</p>
       <p lang="en">Rate football players live, action by action, with a 0–10 rating, heatmaps and reports.</p>
       <div class="stores">
-        <a id="play" href="https://play.google.com/store/apps/details?id=com.flameira.scoutscore">Google Play</a>
-        <a id="apple" href="./">App Store</a>
+        <a id="play" href="https://play.google.com/apps/internaltest/4701028716561689987"><small>Disponível no · Get it on</small>Google Play</a>
+        <a id="apple" href="https://apps.apple.com/app/id6820147399"><small>Descarregar na · Download on the</small>App Store</a>
       </div>
     </div>
   </main>

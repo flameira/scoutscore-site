@@ -70,7 +70,7 @@ ul { padding-left: 20px; }
   display: flex; gap: 16px; overflow-x: auto; scroll-snap-type: x mandatory;
   padding: 4px 4px 16px; -webkit-overflow-scrolling: touch;
 }
-.gallery figure { flex: 0 0 auto; width: 200px; margin: 0; scroll-snap-align: center; }
+.gallery figure { flex: 0 0 auto; width: 220px; margin: 0; scroll-snap-align: center; }
 .gallery img {
   width: 100%; height: auto; display: block; border-radius: 18px;
   border: 1px solid var(--line); box-shadow: 0 6px 18px rgba(0, 0, 0, .18);
@@ -84,3 +84,17 @@ main:has(.gallery) { max-width: 980px; }
   .gallery { flex-wrap: wrap; justify-content: center; overflow: visible; row-gap: 28px; }
 }
 .hero img { max-width: 180px; }
+
+/* Botões de download (Google Play / App Store) */
+.stores { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 24px; }
+.stores a {
+  display: inline-flex; flex-direction: column; align-items: flex-start; min-width: 160px;
+  padding: 8px 20px; border-radius: 12px; background: #0B1E2D; color: #fff;
+  border: 1px solid rgba(255, 255, 255, .18); text-decoration: none; font-weight: 600; font-size: 18px; line-height: 1.2;
+}
+.stores a small { font-weight: 400; font-size: 11px; opacity: .8; }
+.stores a:hover { background: var(--accent); }
+.stores a.hidden { display: none; }
+section.download { text-align: center; margin-top: 48px; scroll-margin-top: 70px; }
+.download h2 { font-size: 22px; margin: 0; }
+.download p { color: var(--muted); margin: 6px 0 0; }
