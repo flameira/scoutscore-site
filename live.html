@@ -163,7 +163,13 @@
       // Evolução da nota
       if (actions.length > 0) {
         var vals = [6.5], sum = 6.5;
-        actions.forEach(function (e) { sum += e[3] / 100; vals.push(Math.min(10, Math.max(0, sum))); });
+        // Igual à app (ScoringService.Apply): limite 0–10 em cada ação; regra 1 = acima de 8.5 as positivas contam metade
+        actions.forEach(function (e) {
+          var pts = e[3] / 100;
+          if ((d.rr || 0) >= 1 && pts > 0) pts = sum >= 8.5 ? pts / 2 : sum + pts > 8.5 ? 8.5 - sum + (sum + pts - 8.5) / 2 : pts;
+          sum = Math.min(10, Math.max(0, sum + pts));
+          vals.push(sum);
+        });
         var lo = Math.min(5, Math.floor(Math.min.apply(null, vals))), hi = Math.max(8, Math.ceil(Math.max.apply(null, vals)));
         var W = 300, H = 110;
         var X = function (i) { return 6 + i * (W - 12) / Math.max(1, vals.length - 1); };
