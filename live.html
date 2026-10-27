@@ -230,13 +230,27 @@
       // Evolução da nota
       if (actions.length > 0) {
         var vals = [6.5], sum = 6.5;
-        // Igual à app (ScoringService.Apply): limite 0–10 em cada ação; regra 1 = acima de 8.5 as positivas contam metade
-        actions.forEach(function (e) {
-          var pts = e[3] / 100;
-          if ((d.rr || 0) >= 1 && pts > 0) pts = sum >= 8.5 ? pts / 2 : sum + pts > 8.5 ? 8.5 - sum + (sum + pts - 8.5) / 2 : pts;
-          sum = Math.min(10, Math.max(0, sum + pts));
-          vals.push(sum);
-        });
+        if ((d.rr || 0) >= 2) {
+          // Igual à app (RatingTracker, regra 2): não depende da ordem; positivas iguais acima de 6 contam metade (ações com 0.5+ não),
+          // ajuste pelo resultado (±0.20), confiança n/(n+8) e curva a partir de 8
+          var seen = {}, total = 0, n = 0, res = Math.max(-0.2, Math.min(0.2, (d.g[0] - d.g[1]) * 0.05));
+          actions.forEach(function (e) {
+            var pts = e[3] / 100;
+            n++;
+            if (pts > 0 && pts < 0.5) { seen[e[2]] = (seen[e[2]] || 0) + 1; if (seen[e[2]] > 6) pts /= 2; }
+            total += pts;
+            var x = 6.5 + n / (n + 8) * (total + res);
+            vals.push(x <= 8 ? Math.max(0, x) : 8 + 2 * Math.tanh((x - 8) / 4));
+          });
+        } else {
+          // Regras 0 e 1 (ScoringService.Apply): limite 0–10 em cada ação; regra 1 = acima de 8.5 as positivas contam metade
+          actions.forEach(function (e) {
+            var pts = e[3] / 100;
+            if ((d.rr || 0) >= 1 && pts > 0) pts = sum >= 8.5 ? pts / 2 : sum + pts > 8.5 ? 8.5 - sum + (sum + pts - 8.5) / 2 : pts;
+            sum = Math.min(10, Math.max(0, sum + pts));
+            vals.push(sum);
+          });
+        }
         var lo = Math.min(5, Math.floor(Math.min.apply(null, vals))), hi = Math.max(8, Math.ceil(Math.max.apply(null, vals)));
         var W = 300, H = 110;
         var X = function (i) { return 6 + i * (W - 12) / Math.max(1, vals.length - 1); };

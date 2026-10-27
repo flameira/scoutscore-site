@@ -1,0 +1,183 @@
+<!doctype html>
+<html lang="pt">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ficha ScoutScore</title>
+  <meta name="description" content="Ficha de jogador partilhada pelo olheiro, no ScoutScore.">
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="no-referrer">
+  <link rel="icon" href="logo.png">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* Ficha partilhada: o código (id.chave) vem depois do «#» e nunca chega ao servidor. A ficha é decifrada aqui, no browser. */
+    main { max-width: 640px; }
+    .panel { background: var(--card); border-radius: 16px; padding: 16px; margin-top: 12px; }
+    .panel h2 { margin: 0 0 10px; font-size: 16px; }
+    .head { display: flex; gap: 14px; align-items: center; }
+    .head .who { flex: 1; min-width: 0; }
+    .head h1 { font-size: 22px; margin: 0; overflow-wrap: anywhere; }
+    .head img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; }
+    .badge { min-width: 76px; text-align: center; border-radius: 14px; padding: 8px 6px; font-weight: 700; font-size: 26px; color: #fff; }
+    .badge small { display: block; font-size: 11px; font-weight: 600; opacity: .9; }
+    .game { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
+    .game:first-of-type { border-top: 0; }
+    .game .info { flex: 1; min-width: 0; }
+    .game .info b { display: block; overflow-wrap: anywhere; }
+    .game .info span { color: var(--muted); font-size: 13px; }
+    .game .rate { width: 46px; text-align: center; border-radius: 10px; padding: 6px 0; font-weight: 700; color: #fff; }
+    .cta { text-align: center; }
+    .cta .btn { display: inline-block; background: var(--accent); color: #fff; border-radius: 12px; padding: 12px 20px; font-weight: 600; text-decoration: none; margin: 6px; }
+    .code { word-break: break-all; font-size: 12px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <header class="top">
+    <a class="brand" href="./"><img src="logo.png" alt="" width="34" height="38"><span>SCOUT<b>SCORE</b></span></a>
+  </header>
+
+  <main>
+    <!-- Abrir na app (a ficha fica guardada no telemóvel, funciona sem internet e atualiza-se sozinha) -->
+    <div class="panel cta" id="open">
+      <h2 id="t-title">Abre a tua ficha na app ScoutScore</h2>
+      <p class="meta" id="t-text">Fica guardada no telemóvel, funciona sem internet e atualiza-se sozinha.</p>
+      <a class="btn" id="openApp" href="#">Abrir na app</a>
+      <a class="btn" id="getApp" href="get?s=card">Descarregar a app</a>
+      <p class="meta" id="t-code-label">Se a app não abrir, copia este código e cola-o em «Fichas partilhadas comigo» → Adicionar ficha:</p>
+      <p class="code"><code id="code"></code></p>
+    </div>
+
+    <p class="meta hidden" id="status"></p>
+
+    <!-- Pré-visualização no browser (só de leitura) -->
+    <div id="card" class="hidden">
+      <div class="panel">
+        <div class="head">
+          <img id="photo" class="hidden" alt="">
+          <div class="who">
+            <h1 id="name"></h1>
+            <div class="meta" id="info"></div>
+            <div class="meta" id="mins"></div>
+          </div>
+          <div class="badge" id="avg"><span id="avgv">–</span><small id="t-avg">média</small></div>
+        </div>
+      </div>
+      <div class="panel"><h2 id="t-games">Jogos</h2><div id="games"></div></div>
+      <p class="meta" id="t-note" style="text-align:center"></p>
+    </div>
+  </main>
+
+  <footer class="foot">© 2026 ScoutScore</footer>
+
+  <script>
+    (function () {
+      var PROJECT = "scoutscore-1a5a7", API_KEY = "AIzaSyChSRr_s5l80X21oeIripy8GKh0PfXQtlw";
+      var T = {
+        pt: { title: "Abre a tua ficha na app ScoutScore", text: "Fica guardada no telemóvel, funciona sem internet e atualiza-se sozinha.", open: "Abrir na app", get: "Descarregar a app",
+              codeLabel: "Se a app não abrir, copia este código e cola-o em «Fichas partilhadas comigo» → Adicionar ficha:", avg: "média", games: "Jogos",
+              invalid: "Este link não tem uma ficha válida. Pede um novo ao olheiro.", notFound: "Esta ficha já não está partilhada.", error: "Não foi possível abrir a ficha agora. Tenta mais tarde.",
+              loading: "A abrir a ficha…", note: "Pré-visualização só de leitura. Na app, a ficha fica guardada e atualiza-se sozinha.", minutes: "min", win: "V", draw: "E", loss: "D" },
+        en: { title: "Open your card in the ScoutScore app", text: "It stays saved on your phone, works offline and updates itself.", open: "Open in the app", get: "Get the app",
+              codeLabel: "If the app doesn't open, copy this code and paste it in “Cards shared with me” → Add card:", avg: "avg", games: "Games",
+              invalid: "This link doesn't have a valid card. Ask the scout for a new one.", notFound: "This card is no longer shared.", error: "Couldn't open the card right now. Try again later.",
+              loading: "Opening the card…", note: "Read-only preview. In the app the card is saved and updates itself.", minutes: "min", win: "W", draw: "D", loss: "L" }
+      };
+      var lang = (navigator.language || "pt").slice(0, 2) === "pt" ? "pt" : "en";
+      var t = T[lang];
+      document.documentElement.lang = lang;
+      function $(id) { return document.getElementById(id); }
+      $("t-title").textContent = t.title; $("t-text").textContent = t.text; $("openApp").textContent = t.open; $("getApp").textContent = t.get;
+      $("t-code-label").textContent = t.codeLabel; $("t-avg").textContent = t.avg; $("t-games").textContent = t.games; $("t-note").textContent = t.note;
+
+      var match = /^#?([A-Za-z0-9_-]{22})\.([A-Za-z0-9_-]{43})$/.exec(location.hash);
+      function status(text) { var s = $("status"); s.textContent = text; s.classList.remove("hidden"); }
+      if (!match) { $("open").classList.add("hidden"); status(t.invalid); return; }
+      var id = match[1], key = match[2], code = id + "." + key;
+      $("code").textContent = code;
+      $("openApp").href = "scoutscore://f/" + code;
+      status(t.loading);
+
+      function b64u(s) {
+        s = s.replace(/-/g, "+").replace(/_/g, "/"); while (s.length % 4) s += "=";
+        var bin = atob(s), out = new Uint8Array(bin.length);
+        for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+        return out;
+      }
+
+      // Mesmo formato que a app (CardCrypto / CardCodec): nonce(12) ‖ cifra ‖ etiqueta(16), AES-256-GCM com o id como dados associados
+      async function decrypt(blob) {
+        var k = await crypto.subtle.importKey("raw", b64u(key), "AES-GCM", false, ["decrypt"]);
+        var plain = await crypto.subtle.decrypt({ name: "AES-GCM", iv: blob.slice(0, 12), additionalData: new TextEncoder().encode(id), tagLength: 128 }, k, blob.slice(12));
+        var stream = new Blob([plain]).stream().pipeThrough(new DecompressionStream("deflate-raw"));
+        return new Uint8Array(await new Response(stream).arrayBuffer());
+      }
+
+      function Reader(bytes) { this.b = bytes; this.p = 0; }
+      Reader.prototype.byte = function () { return this.b[this.p++]; };
+      Reader.prototype.uint = function () { var v = 0, shift = 0, x; do { x = this.b[this.p++]; v += (x & 0x7f) * Math.pow(2, shift); shift += 7; } while (x >= 0x80); return v; };
+      Reader.prototype.int = function () { var u = this.uint(); return u % 2 ? -(u + 1) / 2 : u / 2; };
+      Reader.prototype.text = function () { var n = this.uint(), s = new TextDecoder().decode(this.b.slice(this.p, this.p + n)); this.p += n; return s; };
+      Reader.prototype.bytes = function () { var n = this.uint(), s = this.b.slice(this.p, this.p + n); this.p += n; return s; };
+
+      function parse(bytes) {
+        var r = new Reader(bytes);
+        if (r.byte() !== 1) throw new Error("version");
+        var flags = r.byte(), d = { name: r.text(), team: r.text(), foot: r.text(), positions: r.text(), games: [] };
+        if (flags & 1) d.number = r.uint();
+        if (flags & 2) d.birth = r.uint();
+        if (flags & 4) d.photo = r.bytes();
+        var epoch = Date.UTC(2020, 0, 1), n = r.uint();
+        for (var i = 0; i < n; i++) {
+          var g = { date: new Date(epoch + r.int() * 86400000), opponent: r.text(), competition: r.text(), tg: r.uint(), og: r.uint(), minutes: r.uint() };
+          r.uint(); /* minutos do jogo */ g.positions = r.text(); g.rating = r.uint() / 100; r.uint(); /* regra da nota */
+          for (var s = r.uint(); s > 0; s--) { r.uint(); for (var v = r.uint(); v > 0; v--) r.uint(); }
+          if (r.byte() === 1) { for (var a = r.uint(); a > 0; a--) r.uint(); r.text(); r.text(); }
+          d.games.push(g);
+        }
+        return d;
+      }
+
+      function color(r) { return r >= 8 ? "#1faf3a" : r >= 7 ? "#6fb81f" : r >= 6 ? "#d9a400" : r >= 5 ? "#e07a1e" : "#e0301e"; }
+
+      function show(d) {
+        $("name").textContent = d.name;
+        var info = [];
+        if (d.team) info.push(d.team);
+        if (d.birth) info.push((new Date().getFullYear() - d.birth) + (lang === "pt" ? " anos" : " y/o"));
+        $("info").textContent = info.join(" · ");
+        if (d.photo && d.photo.length) { $("photo").src = URL.createObjectURL(new Blob([d.photo], { type: "image/jpeg" })); $("photo").classList.remove("hidden"); }
+        var total = 0, weighted = 0, sum = 0;
+        d.games.forEach(function (g) { total += g.minutes; weighted += g.rating * g.minutes; sum += g.rating; });
+        if (d.games.length) {
+          var avg = total > 0 ? weighted / total : sum / d.games.length;
+          $("avgv").textContent = avg.toFixed(1); $("avg").style.background = color(avg);
+          $("mins").textContent = total + " " + t.minutes + " · " + d.games.length;
+        }
+        var list = $("games");
+        d.games.slice().sort(function (a, b) { return b.date - a.date; }).forEach(function (g) {
+          var row = document.createElement("div"); row.className = "game";
+          var res = g.tg > g.og ? t.win : g.tg < g.og ? t.loss : t.draw;
+          var info = document.createElement("div"); info.className = "info";
+          var b = document.createElement("b"); b.textContent = g.date.toLocaleDateString(lang === "pt" ? "pt-PT" : "en-GB", { timeZone: "UTC" }) + " vs " + g.opponent;
+          var sp = document.createElement("span"); sp.textContent = res + " " + g.tg + "–" + g.og + " · " + g.minutes + "'" + (g.competition ? " · " + g.competition : "");
+          info.appendChild(b); info.appendChild(sp);
+          var rate = document.createElement("div"); rate.className = "rate"; rate.textContent = g.rating.toFixed(1); rate.style.background = color(g.rating);
+          row.appendChild(info); row.appendChild(rate); list.appendChild(row);
+        });
+        $("status").classList.add("hidden"); $("card").classList.remove("hidden");
+      }
+
+      fetch("https://firestore.googleapis.com/v1/projects/" + PROJECT + "/databases/(default)/documents/fichas/" + id + "?key=" + API_KEY)
+        .then(function (r) {
+          if (r.status === 404) { status(t.notFound); return null; }
+          if (!r.ok) throw new Error("http " + r.status);
+          return r.json();
+        })
+        .then(function (doc) { return doc && decrypt(b64u(doc.fields.blob.stringValue)); })
+        .then(function (bytes) { if (bytes) show(parse(bytes)); })
+        .catch(function () { status(t.error); });
+    })();
+  </script>
+</body>
+</html>
