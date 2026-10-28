@@ -120,19 +120,33 @@
       Reader.prototype.text = function () { var n = this.uint(), s = new TextDecoder().decode(this.b.slice(this.p, this.p + n)); this.p += n; return s; };
       Reader.prototype.bytes = function () { var n = this.uint(), s = this.b.slice(this.p, this.p + n); this.p += n; return s; };
 
+      // Formato v2 (CardCodec): a página só mostra o resumo de cada jogo; as ações e a cronologia são lidas (para avançar) mas não mostradas
       function parse(bytes) {
         var r = new Reader(bytes);
-        if (r.byte() !== 1) throw new Error("version");
+        if (r.byte() !== 2) throw new Error("version");
         var flags = r.byte(), d = { name: r.text(), team: r.text(), foot: r.text(), positions: r.text(), games: [] };
         if (flags & 1) d.number = r.uint();
         if (flags & 2) d.birth = r.uint();
         if (flags & 4) d.photo = r.bytes();
         var epoch = Date.UTC(2020, 0, 1), n = r.uint();
         for (var i = 0; i < n; i++) {
-          var g = { date: new Date(epoch + r.int() * 86400000), opponent: r.text(), competition: r.text(), tg: r.uint(), og: r.uint(), minutes: r.uint() };
-          r.uint(); /* minutos do jogo */ g.positions = r.text(); g.rating = r.uint() / 100; r.uint(); /* regra da nota */
-          for (var s = r.uint(); s > 0; s--) { r.uint(); for (var v = r.uint(); v > 0; v--) r.uint(); }
-          if (r.byte() === 1) { for (var a = r.uint(); a > 0; a--) r.uint(); r.text(); r.text(); }
+          var g = {};
+          r.uint(); /* id do jogo */
+          g.date = new Date(epoch + r.int() * 60000);
+          g.opponent = r.text(); g.competition = r.text(); r.text(); /* local */ r.text(); /* escalão */
+          g.tg = r.uint(); g.og = r.uint(); r.uint(); /* minutos por parte */
+          var gf = r.byte();
+          r.uint(); r.uint(); /* segundos de cada parte */
+          g.minutes = r.uint(); r.uint(); /* minutos do jogo */
+          g.rating = r.uint() / 100; r.uint(); /* regra da nota */
+          for (var a = r.uint(); a > 0; a--) { if (r.uint() === 0) { r.text(); r.text(); r.text(); r.uint(); } r.int(); }
+          for (var e = r.uint(); e > 0; e--) {
+            var head = r.uint(), ef = head % 8, code = Math.floor(head / 8);
+            if (ef & 4) r.uint();
+            r.int(); r.byte();
+            if (code >= 4) { if (ef & 1) r.int(); if (ef & 2) { r.byte(); r.byte(); } }
+          }
+          if (gf & 4) { for (var k = r.uint(); k > 0; k--) r.uint(); r.text(); r.text(); }
           d.games.push(g);
         }
         return d;
